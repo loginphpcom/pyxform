@@ -9,7 +9,8 @@ import re
 from odk_validate import check_xform
 from survey_element import SurveyElement
 from errors import PyXFormError
-from pyxform import constants
+import constants
+import os
 
 
 nsmap = {
@@ -111,6 +112,22 @@ class Survey(Section):
             yield node("instance", node("root", *instance_element_list),
                        id=list_name)
 
+    def _generate_pulldata_instances(self):
+        pulldata = []
+        for i in self.iter_descendants():
+            if 'calculate' in i['bind']:
+                calculate = i['bind']['calculate']
+                if calculate.startswith('pulldata('):
+                    pieces = calculate.split('"') \
+                        if '"' in calculate else calculate.split("'")
+                    if len(pieces) > 1 and pieces[1] not in pulldata:
+                        csv_id = pieces[1]
+                        pulldata.append(csv_id)
+
+                        yield node("instance", id=csv_id,
+                                   src="jr://file-csv/{}.csv".format(csv_id)
+                                   )
+
     def xml_model(self):
         """
         Generate the xform <model> element
@@ -124,6 +141,7 @@ class Survey(Section):
             model_children.append(self.itext())
         model_children += [node("instance", self.xml_instance())]
         model_children += list(self._generate_static_instances())
+        model_children += list(self._generate_pulldata_instances())
         model_children += self.xml_bindings()
 
         if self.submission_url or self.public_key:
@@ -135,6 +153,7 @@ class Survey(Section):
             submission_node = node("submission", method="form-data-post",
                                    **submission_attrs)
             model_children.insert(0, submission_node)
+
         return node("model",  *model_children)
 
     def xml_instance(self):
@@ -448,16 +467,22 @@ class Survey(Section):
             warnings = []
         if not path:
             path = self._print_name + ".xml"
-        fp = codecs.open(path, mode="w", encoding="utf-8")
-        fp.write(self._to_pretty_xml())
-        fp.close()
+        with codecs.open(path, mode="w", encoding="utf-8") as fp:
+            fp.write(self._to_pretty_xml())
         if validate:
             warnings.extend(check_xform(path))
 
     def to_xml(self, validate=True, warnings=None):
-        with tempfile.NamedTemporaryFile() as tmp:
+        # On Windows, NamedTemporaryFile must be opened exclusively.
+        # So it must be explicitly created, opened, closed, and removed.
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp.close()
+        try:
             # this will throw an exception if the xml is not valid
-            self.print_xform_to_file(tmp.name, validate=validate, warnings=warnings)
+            self.print_xform_to_file(tmp.name, validate=validate,
+                                     warnings=warnings)
+        finally:
+            os.remove(tmp.name)
         return self._to_pretty_xml()
 
     def instantiate(self):

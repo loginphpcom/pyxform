@@ -12,6 +12,8 @@ import signal
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 ODK_VALIDATE_JAR = os.path.join(CURRENT_DIRECTORY, "ODK_Validate.jar")
 
+class ODKValidateError(Exception):
+    pass
 
 #Adapted from:
 #http://betabug.ch/blogs/ch-athens/1093
@@ -40,8 +42,14 @@ def run_popen_with_timeout(command, timeout):
     return (p.returncode, timeout, stdout, stderr)
 
 def _java_installed():
-    p = Popen(["which","java"], stdout=PIPE)
-    return len(p.stdout.readlines()) != 0
+    # This alternative allows for java detection on Windows.
+    try:
+        p = Popen(["which", "java"], stdout=PIPE).stdout.readlines()
+        found = len(p) != 0
+    except WindowsError:
+        p = Popen('java -version', stderr=PIPE, stdout=PIPE).stderr.read()
+        found = p.startswith('java version')
+    return found
 
 def _cleanup_errors(error_message):
     def get_last_item(xpathStr):
@@ -104,12 +112,24 @@ def check_xform(path_to_xform):
     returncode, timeout, stdout, stderr = run_popen_with_timeout(
         ["java", "-jar", ODK_VALIDATE_JAR, path_to_xform], 100)
     warnings = []
+    # On Windows, stderr may be latin-1; in which case utf-8 decode will fail.
+    # If both utf-8 and latin-1 decoding fail then raise all as IOError.
+    # If the above validate jar call fails, add make sure that the java path
+    #  is set, e.g. PATH=C:\Program Files (x86)\Java\jre1.8.0_71\bin
+    try:
+        stderr = stderr.decode('utf-8')
+    except UnicodeDecodeError as ude:
+        try:
+            stderr = stderr.decode('latin-1')
+        except BaseException as be:
+            msg = "Failed to decode validate stderr as utf-8 or latin-1."
+            raise IOError(msg, ude, be)
 
     if timeout:
         return ["XForm took to long to completely validate."]
     else:
         if returncode > 0:  # Error invalid
-            raise Exception(
+            raise ODKValidateError(
                 'ODK Validate Errors:\n' + _cleanup_errors(stderr))
         elif returncode == 0:
             if stderr:
