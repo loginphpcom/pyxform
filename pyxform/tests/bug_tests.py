@@ -13,6 +13,7 @@ sys.path.insert(0, parentdir)
 import pyxform
 from pyxform.utils import has_external_choices
 from pyxform.xls2json import SurveyReader
+from .utils import XFormTestCase
 
 DIR = os.path.dirname(__file__)
 
@@ -55,7 +56,7 @@ class duplicate_columns(unittest.TestCase):
             survey.print_xform_to_file(output_path, warnings=warnings)
 
 
-class repeat_date_test(unittest.TestCase):
+class repeat_date_test(XFormTestCase):
 
     maxDiff = None
 
@@ -79,11 +80,10 @@ class repeat_date_test(unittest.TestCase):
                 expected_output_path, 'rb', encoding="utf-8") as expected_file:
             with codecs.open(
                     output_path, 'rb', encoding="utf-8") as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
+                self.assertXFormEqual(expected_file.read(), actual_file.read())
 
 
-class xml_escaping(unittest.TestCase):
+class xml_escaping(XFormTestCase):
 
     maxDiff = None
 
@@ -107,11 +107,10 @@ class xml_escaping(unittest.TestCase):
                 expected_output_path, 'rb', encoding="utf-8") as expected_file:
             with codecs.open(
                     output_path, 'rb', encoding="utf-8") as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
+                self.assertXFormEqual(expected_file.read(), actual_file.read())
 
 
-class DefaultTimeTest(unittest.TestCase):
+class DefaultTimeTest(XFormTestCase):
 
     maxDiff = None
 
@@ -135,8 +134,7 @@ class DefaultTimeTest(unittest.TestCase):
                 expected_output_path, 'rb', encoding="utf-8") as expected_file:
             with codecs.open(
                     output_path, 'rb', encoding="utf-8") as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
+                self.assertXFormEqual(expected_file.read(), actual_file.read())
 
 
 class cascade_old_format(unittest.TestCase):
@@ -229,24 +227,6 @@ class BadChoicesSheetHeaders(unittest.TestCase):
                           "Found " + str(len(warnings)) + " warnings")
 
 
-class MissingHeaderColumnsTest(unittest.TestCase):
-    def test_choices_headers_missing(self):
-        filename = "no_header_on_choices_sheet.xls"
-        path_to_excel_file = os.path.join(DIR, "bug_example_xls", filename)
-        workbook_dict = pyxform.xls2json.parse_file_to_workbook_dict(
-            path_to_excel_file)
-        with self.assertRaises(pyxform.errors.PyXFormError):
-            pyxform.xls2json.workbook_to_json(workbook_dict)
-
-    def test_survey_headers_missing(self):
-        filename = "no_header_on_survey_sheet.xls"
-        path_to_excel_file = os.path.join(DIR, "bug_example_xls", filename)
-        workbook_dict = pyxform.xls2json.parse_file_to_workbook_dict(
-            path_to_excel_file)
-        with self.assertRaises(pyxform.errors.PyXFormError):
-            pyxform.xls2json.workbook_to_json(workbook_dict)
-
-
 class TestChoiceNameAsType(unittest.TestCase):
     def test_choice_name_as_type(self):
         filename = "choice_name_as_type.xls"
@@ -254,6 +234,14 @@ class TestChoiceNameAsType(unittest.TestCase):
         xls_reader = SurveyReader(path_to_excel_file)
         survey_dict = xls_reader.to_json_dict()
         self.assertTrue(has_external_choices(survey_dict))
+
+class TestBlankSecondRow(unittest.TestCase):
+    def test_blank_second_row(self):
+        filename = "blank_second_row.xls"
+        path_to_excel_file = os.path.join(DIR, "bug_example_xls", filename)
+        xls_reader = SurveyReader(path_to_excel_file)
+        survey_dict = xls_reader.to_json_dict()
+        self.assertTrue(len(survey_dict) > 0)
 
 
 if __name__ == '__main__':

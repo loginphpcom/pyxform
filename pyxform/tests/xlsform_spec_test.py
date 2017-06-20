@@ -11,11 +11,12 @@ parentdir = os.path.dirname(os.path.dirname(
 sys.path.insert(0, parentdir)
 import pyxform
 from pyxform.errors import PyXFormError
+from .utils import XFormTestCase
 
 DIR = os.path.dirname(__file__)
 
 
-class main_test(unittest.TestCase):
+class main_test(XFormTestCase):
 
     maxDiff = None
 
@@ -39,11 +40,10 @@ class main_test(unittest.TestCase):
                 as expected_file:
             with codecs.open(output_path, 'rb', encoding="utf-8") \
                     as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
+                self.assertXFormEqual(expected_file.read(), actual_file.read())
 
 
-class flat_xlsform_test(unittest.TestCase):
+class flat_xlsform_test(XFormTestCase):
 
     maxDiff = None
 
@@ -67,11 +67,10 @@ class flat_xlsform_test(unittest.TestCase):
                 as expected_file:
             with codecs.open(output_path, 'rb', encoding="utf-8") \
                     as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
+                self.assertXFormEqual(expected_file.read(), actual_file.read())
 
 
-class test_new_widgets(unittest.TestCase):
+class test_new_widgets(XFormTestCase):
 
     maxDiff = None
 
@@ -95,8 +94,7 @@ class test_new_widgets(unittest.TestCase):
                 as expected_file:
             with codecs.open(output_path, 'rb', encoding="utf-8") \
                     as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
+                self.assertXFormEqual(expected_file.read(), actual_file.read())
 
 
 class warnings_test(unittest.TestCase):
@@ -125,7 +123,7 @@ class calculate_without_calculation_test(unittest.TestCase):
                           path_to_excel_file)
 
 
-class PullDataTest(unittest.TestCase):
+class PullDataTest(XFormTestCase):
 
     maxDiff = None
 
@@ -149,45 +147,13 @@ class PullDataTest(unittest.TestCase):
                 as expected_file:
             with codecs.open(output_path, 'rb', encoding="utf-8") \
                     as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
+                self.assertXFormEqual(expected_file.read(), actual_file.read())
 
         # cleanup
         os.remove(output_path)
 
 
-class GeoWidgetsTest(unittest.TestCase):
-
-    maxDiff = None
-
-    def runTest(self):
-        filename = "geo.xlsx"
-        path_to_excel_file = os.path.join(DIR, "example_xls", filename)
-        # Get the xform output path:
-        root_filename, ext = os.path.splitext(filename)
-        output_path = os.path.join(DIR, "test_output", root_filename + ".xml")
-        expected_output_path = os.path.join(DIR, "test_expected_output",
-                                            root_filename + ".xml")
-        # Do the conversion:
-        warnings = []
-        json_survey = pyxform.xls2json.parse_file_to_json(
-            path_to_excel_file, warnings=warnings)
-        survey = pyxform.create_survey_element_from_dict(json_survey)
-        survey.print_xform_to_file(output_path, warnings=warnings)
-
-        # Compare with the expected output:
-        with codecs.open(expected_output_path, 'rb', encoding="utf-8") \
-                as expected_file:
-            with codecs.open(output_path, 'rb', encoding="utf-8") \
-                    as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
-
-        # cleanup
-        os.remove(output_path)
-
-
-class SeachAndSelectTest(unittest.TestCase):
+class SeachAndSelectTest(XFormTestCase):
 
     maxDiff = None
 
@@ -211,8 +177,7 @@ class SeachAndSelectTest(unittest.TestCase):
                 as expected_file:
             with codecs.open(output_path, 'rb', encoding="utf-8") \
                     as actual_file:
-                self.assertMultiLineEqual(
-                    expected_file.read(), actual_file.read())
+                self.assertXFormEqual(expected_file.read(), actual_file.read())
 
         # cleanup
         os.remove(output_path)
